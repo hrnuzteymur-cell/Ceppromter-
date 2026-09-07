@@ -29,8 +29,7 @@ jobs:
       - name: APK dosyasını yükle
         uses: actions/upload-artifact@v4
         with:
-          name: Cep-Prompter-beta01-debug-apk
+          name: Cep-Prompter-beta02-debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 30
-

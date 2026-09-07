@@ -2,7 +2,7 @@
 
 Cep Prompter, Android 8.0 ve sonrası için çevrimdışı öncelikli, filigransız teleprompter ve video kayıt uygulamasıdır.
 
-## Beta 01'de çalışan özellikler
+## Beta 02'de çalışan özellikler
 
 - Metin oluşturma, düzenleme, otomatik yerel saklama ve paylaş menüsünden metin alma
 - Metin arama, favorileme, çoğaltma, silme, TXT/HTML/RTF içe aktarma ve TXT dışa aktarma
@@ -15,13 +15,14 @@ Cep Prompter, Android 8.0 ve sonrası için çevrimdışı öncelikli, filigrans
 - Videoyu doğrudan `Galeri > Filmler > Cep Prompter` konumuna kaydetme
 - Kamera izni reddedildiğinde uygulama ayarlarına yönlendirme
 - Hesapsız kullanım; metinler ve ayarlar cihazda kalır
+- Cep Prompter koyu açılış teması ve görünür ana ekran (boş/beyaz açılış düzeltmesi)
 
 ## GitHub'dan APK indirme
 
 1. Depoda **Actions** sekmesini açın.
 2. **Cep Prompter APK** iş akışını seçin.
 3. En üstteki başarılı çalıştırmayı açın.
-4. Sayfanın altındaki **Cep-Prompter-beta01-debug-apk** dosyasını indirin.
+4. Sayfanın altındaki **Cep-Prompter-beta02-debug-apk** dosyasını indirin.
 5. ZIP'i açıp `app-debug.apk` dosyasını Android telefona kurun.
 
 Android, GitHub'dan indirilen ilk APK için “bilinmeyen uygulama yükleme” izni isteyebilir. Kaynak kod bu depoda görülebilir; yine de yalnızca bu deponun Actions çıktısını kurun.

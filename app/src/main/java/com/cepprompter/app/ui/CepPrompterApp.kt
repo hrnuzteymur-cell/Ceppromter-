@@ -125,6 +125,15 @@ private fun LibraryScreen(
     ) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(16.dp, 8.dp, 16.dp, 96.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item {
+                ElevatedCard(colors = CardDefaults.elevatedCardColors(containerColor = Color(0xFF123A35))) {
+                    Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("Tek çekimde anlat", color = Color(0xFF79E8C2), style = MaterialTheme.typography.labelLarge)
+                        Text("Sözcükler aksın,\nsen kameraya bak.", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                        Text("Bir metin seçerek yalnızca okuyabilir veya ön–arka kamerayla videonu kaydedebilirsin.")
+                    }
+                }
+            }
+            item {
                 OutlinedTextField(query, { query = it }, Modifier.fillMaxWidth(), singleLine = true, label = { Text("Metinlerde ara") }, leadingIcon = { Icon(Icons.Default.Search, null) })
                 FilterChip(favoritesOnly, { favoritesOnly = !favoritesOnly }, { Text("Yalnız favoriler") }, leadingIcon = { Icon(Icons.Default.Favorite, null) })
             }
