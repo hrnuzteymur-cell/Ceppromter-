@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+
 package com.cepprompter.app.ui
 
 import android.widget.Toast
@@ -203,7 +205,7 @@ fun PrompterText(text: String, settings: PrompterSettings, playing: Boolean, mod
                     val event = awaitPointerEvent()
                     val change = event.changes.firstOrNull { it.id == down.id } ?: break
                     val delta = change.position.y - previousY
-                    if (delta != 0f) { scroll.scrollBy(-delta); change.consume() }
+                    if (delta != 0f) { scroll.dispatchRawDelta(-delta); change.consume() }
                     previousY = change.position.y
                 } while (change.pressed)
                 if (resumeAfterTouch) latestOnPlaying(true)
