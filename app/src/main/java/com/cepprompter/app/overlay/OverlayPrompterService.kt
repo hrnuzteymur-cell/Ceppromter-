@@ -85,10 +85,10 @@ class OverlayPrompterService : Service() {
         val title = TextView(this).apply { id = 1001; setTextColor(Color.WHITE); setBackgroundColor(Color.rgb(16, 29, 44)); setPadding(18, 10, 18, 10); this.text = "☰  CEP PROMPTER — sürükle" }
         val body = TextView(this).apply { setTextColor(Color.WHITE); textSize = 30f; setPadding(22, 120, 22, 160); this.text = text.ifBlank { "Metin seçilmedi" } }
         val scroll = ScrollView(this).apply { id = 1002; addView(body); setBackgroundColor(Color.argb(210, 0, 0, 0)) }
-        val play = Button(this).apply { text = "▶ / Ⅱ"; setOnClickListener { playing = !playing } }
-        val minus = Button(this).apply { text = "−"; setOnClickListener { speed = (speed - 1).coerceAtLeast(1) } }
-        val plus = Button(this).apply { text = "+"; setOnClickListener { speed = (speed + 1).coerceAtMost(18) } }
-        val close = Button(this).apply { text = "Kapat"; setOnClickListener { stopSelf() } }
+        val play = Button(this).apply { this.text = "▶ / Ⅱ"; setOnClickListener { playing = !playing } }
+        val minus = Button(this).apply { this.text = "−"; setOnClickListener { speed = (speed - 1).coerceAtLeast(1) } }
+        val plus = Button(this).apply { this.text = "+"; setOnClickListener { speed = (speed + 1).coerceAtMost(18) } }
+        val close = Button(this).apply { this.text = "Kapat"; setOnClickListener { stopSelf() } }
         val resize = SeekBar(this).apply { max = 100; progress = 55; setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(s: SeekBar?, value: Int, fromUser: Boolean) { if (fromUser) { params.height = ((160 + value * 4) * density).toInt(); root?.let { manager.updateViewLayout(it, params) } } }
             override fun onStartTrackingTouch(s: SeekBar?) = Unit; override fun onStopTrackingTouch(s: SeekBar?) = Unit

@@ -61,7 +61,7 @@ fun ToolsScreen(script: Script, onVideoEditor: () -> Unit, onBack: () -> Unit) {
                 runCatching { context.startActivity(Intent(Settings.ACTION_BLUETOOTH_SETTINGS)) }.onFailure { context.startActivity(Intent(Settings.ACTION_SETTINGS)) }
             })
             ToolCard(Icons.Default.Watch, "Wear OS kumandası", "Cep Prompter saat modülü, Google Play Hizmetleri üzerinden telefona oynat/durdur ve hız komutlarını iletir. Saat uygulamasını aynı projeden yükleyin.", "Saat modülü hazır", {})
-            ToolCard(Icons.Default.MovieEdit, "Video düzenleme stüdyosu", "Çekimi seçin; kırpma/döndürme, en-boy oranı, altyazı, logo-yazı, müzik ve paylaşım çıktılarını hazırlayın.", "Stüdyoyu aç", onVideoEditor)
+            ToolCard(Icons.Default.Movie, "Video düzenleme stüdyosu", "Çekimi seçin; kırpma/döndürme, en-boy oranı, altyazı, logo-yazı ve paylaşım çıktılarını hazırlayın.", "Stüdyoyu aç", onVideoEditor)
             Text("Gizlilik", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             Text("Wi‑Fi kumandası yalnızca yerel ağda çalışır; internet sunucusuna metin göndermez. Kayan pencere ve kumanda servisleri siz kapatana kadar bildirim gösterir.")
         }
