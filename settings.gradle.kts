@@ -16,3 +16,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "CepPrompter"
 include(":app")
+include(":wear")

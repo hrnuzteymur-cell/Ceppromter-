@@ -56,7 +56,11 @@ class ScriptRepository(context: Context) {
         timedMinutes = prefs.getInt("timedMinutes", 0).takeIf { it > 0 },
         textColor = prefs.getLong("textColor", 0xFFFFFFFF),
         readingPosition = prefs.getString("readingPosition", "CENTER") ?: "CENTER",
-        videoQuality = prefs.getString("videoQuality", "FHD") ?: "FHD"
+        videoQuality = prefs.getString("videoQuality", "FHD") ?: "FHD",
+        voiceFollow = prefs.getBoolean("voiceFollow", false),
+        wordsPerMinute = prefs.getInt("wordsPerMinute", 130),
+        fontFamily = prefs.getString("fontFamily", "SANS") ?: "SANS",
+        frameRate = prefs.getInt("frameRate", 30)
     )
 
     fun saveSettings(settings: PrompterSettings) {
@@ -75,6 +79,10 @@ class ScriptRepository(context: Context) {
             .putLong("textColor", settings.textColor)
             .putString("readingPosition", settings.readingPosition)
             .putString("videoQuality", settings.videoQuality)
+            .putBoolean("voiceFollow", settings.voiceFollow)
+            .putInt("wordsPerMinute", settings.wordsPerMinute)
+            .putString("fontFamily", settings.fontFamily)
+            .putInt("frameRate", settings.frameRate)
             .apply()
     }
 

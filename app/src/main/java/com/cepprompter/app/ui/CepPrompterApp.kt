@@ -3,6 +3,8 @@
 package com.cepprompter.app.ui
 
 import android.widget.Toast
+import android.Manifest
+import android.content.pm.PackageManager
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -37,6 +39,10 @@ import com.cepprompter.app.data.ScriptRepository
 import com.cepprompter.app.model.AppPage
 import com.cepprompter.app.model.PrompterSettings
 import com.cepprompter.app.model.Script
+import com.cepprompter.app.control.ControlCenter
+import com.cepprompter.app.control.PrompterCommand
+import com.cepprompter.app.control.VoiceFollower
+import androidx.core.content.ContextCompat
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlin.math.roundToInt
@@ -80,13 +86,15 @@ fun CepPrompterApp(incomingText: String?, consumed: () -> Unit) {
             { persist(it.copy(favorite = !it.favorite)) },
             { persist(it.copy(id = java.util.UUID.randomUUID().toString(), title = "${it.title} (Kopya)")) },
             { target -> scripts = scripts.filterNot { it.id == target.id }.ifEmpty { listOf(Script(title = "Yeni Metin", body = "")) }; repository.save(scripts) },
-            { persist(it) }, { page = AppPage.SETTINGS }
+            { persist(it) }, { page = AppPage.TOOLS }, { page = AppPage.SETTINGS }
         )
         AppPage.EDITOR -> EditorScreen(selected, { page = AppPage.LIBRARY },
             { persist(it); page = AppPage.LIBRARY }, { persist(it); page = AppPage.PROMPTER }, { persist(it); page = AppPage.CAMERA })
         AppPage.PROMPTER -> PrompterScreen(selected, settings, repository.loadProgress(selected.id),
             { repository.saveProgress(selected.id, it) }, { updateSettings(it) }, { page = AppPage.LIBRARY }, { page = AppPage.CAMERA })
         AppPage.CAMERA -> CameraRecorderScreen(selected, settings, { updateSettings(it) }) { page = AppPage.LIBRARY }
+        AppPage.TOOLS -> ToolsScreen(selected, { page = AppPage.VIDEO_EDITOR }) { page = AppPage.LIBRARY }
+        AppPage.VIDEO_EDITOR -> VideoEditorScreen(selected) { page = AppPage.TOOLS }
         AppPage.SETTINGS -> SettingsScreen(settings, { updateSettings(it) }) { page = AppPage.LIBRARY }
     }
 }
@@ -96,7 +104,7 @@ private fun LibraryScreen(
     scripts: List<Script>, onOpen: (Script) -> Unit, onNew: () -> Unit,
     onPrompter: (Script) -> Unit, onCamera: (Script) -> Unit,
     onFavorite: (Script) -> Unit, onDuplicate: (Script) -> Unit, onDelete: (Script) -> Unit,
-    onImport: (Script) -> Unit, onSettings: () -> Unit
+    onImport: (Script) -> Unit, onTools: () -> Unit, onSettings: () -> Unit
 ) {
     val context = LocalContext.current
     var query by remember { mutableStateOf("") }
@@ -119,6 +127,7 @@ private fun LibraryScreen(
             title = { Column { Text("Cep Prompter", fontWeight = FontWeight.Bold); Text("Metnin hazır, kameran hazır", style = MaterialTheme.typography.labelSmall) } },
             actions = {
                 IconButton(onClick = { importer.launch(arrayOf("text/*", "application/rtf")) }) { Icon(Icons.Default.FileOpen, "Dosya içe aktar") }
+                IconButton(onClick = onTools) { Icon(Icons.Default.Build, "Araçlar ve uzaktan kontrol") }
                 IconButton(onClick = onSettings) { Icon(Icons.Default.Settings, "Ayarlar") }
             }) },
         floatingActionButton = { ExtendedFloatingActionButton(onClick = onNew, icon = { Icon(Icons.Default.Add, null) }, text = { Text("Yeni metin") }) }
@@ -188,16 +197,19 @@ private fun EditorScreen(initial: Script, onBack: () -> Unit, onSave: (Script) -
 
 @Composable
 fun PrompterText(text: String, settings: PrompterSettings, playing: Boolean, modifier: Modifier = Modifier,
-    initialProgress: Float = 0f, onPlayingChange: (Boolean) -> Unit = {}, onProgressChange: (Float) -> Unit = {}) {
+    initialProgress: Float = 0f, requestedProgress: Float? = null, onPlayingChange: (Boolean) -> Unit = {}, onProgressChange: (Float) -> Unit = {}) {
     val scroll = rememberScrollState()
     val latestPlaying by rememberUpdatedState(playing)
     val latestOnPlaying by rememberUpdatedState(onPlayingChange)
     LaunchedEffect(text) { delay(150); if (initialProgress > 0f) scroll.scrollTo((scroll.maxValue * initialProgress).roundToInt()) }
+    LaunchedEffect(requestedProgress, scroll.maxValue) { requestedProgress?.let { scroll.scrollTo((scroll.maxValue * it.coerceIn(0f, 1f)).roundToInt()) } }
     LaunchedEffect(scroll) { snapshotFlow { if (scroll.maxValue == 0) 0f else scroll.value.toFloat() / scroll.maxValue }.distinctUntilChanged().collect { onProgressChange(it) } }
     LaunchedEffect(playing, settings.speed, settings.loop, settings.timedMinutes, text) {
         while (playing) {
             val timed = settings.timedMinutes?.let { scroll.maxValue / (it * 60f * 60f).coerceAtLeast(1f) }
-            scroll.scrollBy(timed ?: (.55f + settings.speed * 7.5f))
+            val wordCount = text.trim().split(Regex("\\s+")).size.coerceAtLeast(1)
+            val wpmRate = scroll.maxValue / ((wordCount / settings.wordsPerMinute.toFloat()) * 60f * 60f).coerceAtLeast(1f)
+            scroll.scrollBy(timed ?: wpmRate)
             if (scroll.value >= scroll.maxValue) { if (settings.loop) scroll.scrollTo(0) else { onPlayingChange(false); break } }
             delay(16)
         }
@@ -230,15 +242,44 @@ fun PrompterText(text: String, settings: PrompterSettings, playing: Boolean, mod
 @Composable
 private fun PrompterScreen(script: Script, settings: PrompterSettings, initialProgress: Float, onProgress: (Float) -> Unit,
     onSettingsChange: (PrompterSettings) -> Unit, onBack: () -> Unit, onCamera: () -> Unit) {
+    val context = LocalContext.current
     var playing by remember { mutableStateOf(false) }
+    var requestedProgress by remember { mutableStateOf<Float?>(null) }
+    var voiceState by remember { mutableStateOf("Sesle takip kapalı") }
+    var hasMic by remember { mutableStateOf(ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) }
+    val micPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { hasMic = it }
+    val voiceFollower = remember(script.body) { VoiceFollower(context, script.body, { requestedProgress = it }, { voiceState = it }) }
+    DisposableEffect(voiceFollower) { onDispose { voiceFollower.destroy() } }
+    LaunchedEffect(settings.voiceFollow, hasMic) {
+        if (settings.voiceFollow && hasMic) { playing = false; voiceFollower.start() } else voiceFollower.stop()
+    }
+    val currentSettings by rememberUpdatedState(settings)
+    LaunchedEffect(Unit) {
+        ControlCenter.commands.collect { command ->
+            when (command) {
+                PrompterCommand.Toggle -> playing = !playing
+                PrompterCommand.Play -> playing = true
+                PrompterCommand.Pause -> playing = false
+                PrompterCommand.Faster -> onSettingsChange(currentSettings.copy(speed = (currentSettings.speed + .05f).coerceAtMost(1f)))
+                PrompterCommand.Slower -> onSettingsChange(currentSettings.copy(speed = (currentSettings.speed - .05f).coerceAtLeast(0f)))
+                is PrompterCommand.Seek -> requestedProgress = command.progress
+            }
+        }
+    }
     Box(Modifier.fillMaxSize().background(Color(0xFF03070C)).systemBarsPadding()) {
-        PrompterText(script.body, settings, playing, Modifier.align(Alignment.Center).fillMaxHeight(), initialProgress, { playing = it }, onProgress)
+        PrompterText(script.body, settings, playing, Modifier.align(Alignment.Center).fillMaxHeight(), initialProgress, requestedProgress, { playing = it }, onProgress)
         Row(Modifier.align(Alignment.TopCenter).fillMaxWidth().padding(8.dp), horizontalArrangement = Arrangement.SpaceBetween) {
             IconButton(onClick = onBack) { Icon(Icons.Default.Close, "Kapat", tint = Color.White) }
-            Text(if (playing) "Dokun: beklet • Sürükle: gez" else "Hazır", color = Color.White, modifier = Modifier.padding(top = 12.dp))
+            Text(if (settings.voiceFollow) voiceState else if (playing) "Dokun: beklet • Sürükle: gez" else "Hazır", color = Color.White, modifier = Modifier.padding(top = 12.dp))
             IconButton(onClick = onCamera) { Icon(Icons.Default.Videocam, "Kamera", tint = Color.White) }
         }
         PrompterControls(playing, settings, { playing = it }, onSettingsChange, Modifier.align(Alignment.BottomCenter))
+        FilledTonalIconButton(onClick = {
+            if (!hasMic) micPermission.launch(Manifest.permission.RECORD_AUDIO)
+            else onSettingsChange(settings.copy(voiceFollow = !settings.voiceFollow))
+        }, modifier = Modifier.align(Alignment.CenterEnd).padding(10.dp)) {
+            Icon(if (settings.voiceFollow) Icons.Default.Mic else Icons.Default.MicOff, "Sesle takip")
+        }
     }
 }
 
@@ -248,8 +289,9 @@ fun PrompterControls(playing: Boolean, settings: PrompterSettings, onPlayingChan
     Surface(modifier.fillMaxWidth(), color = Color(0xE6101D2C), shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)) {
         Column(Modifier.navigationBarsPadding().padding(horizontal = 12.dp, vertical = 8.dp)) {
             ControlSlider("Hız", "${(settings.speed * 100).roundToInt()}%", settings.speed, 0f..1f,
-                { onSettingsChange(settings.copy(speed = it)) }, { onSettingsChange(settings.copy(speed = (settings.speed - .05f).coerceAtLeast(0f))) },
-                { onSettingsChange(settings.copy(speed = (settings.speed + .05f).coerceAtMost(1f))) })
+                { onSettingsChange(settings.copy(speed = it, wordsPerMinute = (50 + it * 250).roundToInt())) },
+                { val value = (settings.speed - .05f).coerceAtLeast(0f); onSettingsChange(settings.copy(speed = value, wordsPerMinute = (50 + value * 250).roundToInt())) },
+                { val value = (settings.speed + .05f).coerceAtMost(1f); onSettingsChange(settings.copy(speed = value, wordsPerMinute = (50 + value * 250).roundToInt())) })
             ControlSlider("Saydamlık", "${(settings.panelOpacity * 100).roundToInt()}%", settings.panelOpacity, .1f..1f,
                 { onSettingsChange(settings.copy(panelOpacity = it)) }, { onSettingsChange(settings.copy(panelOpacity = (settings.panelOpacity - .05f).coerceAtLeast(.1f))) },
                 { onSettingsChange(settings.copy(panelOpacity = (settings.panelOpacity + .05f).coerceAtMost(1f))) })
@@ -289,6 +331,11 @@ private fun SettingsScreen(settings: PrompterSettings, onSettingsChange: (Prompt
             Slider(settings.panelWidth, { onSettingsChange(settings.copy(panelWidth = it)) }, valueRange = .45f..1f)
             Row(verticalAlignment = Alignment.CenterVertically) { Text("Aktif satır çizgisi", Modifier.weight(1f)); Switch(settings.highlightCenter, { onSettingsChange(settings.copy(highlightCenter = it)) }) }
             Row(verticalAlignment = Alignment.CenterVertically) { Text("Dikey ayna", Modifier.weight(1f)); Switch(settings.mirrorVertical, { onSettingsChange(settings.copy(mirrorVertical = it)) }) }
+            Text("Kelime/dakika: ${settings.wordsPerMinute}")
+            Slider(settings.wordsPerMinute.toFloat(), { onSettingsChange(settings.copy(wordsPerMinute = it.roundToInt(), speed = ((it - 50f) / 250f).coerceIn(0f, 1f))) }, valueRange = 50f..300f, steps = 24)
+            Text("Metni tamamlama süresi")
+            SingleChoiceSegmentedButtonRow { listOf<Int?>(null, 1, 3, 5).forEachIndexed { i, n -> SegmentedButton(settings.timedMinutes == n, { onSettingsChange(settings.copy(timedMinutes = n)) }, SegmentedButtonDefaults.itemShape(i,4)) { Text(n?.let { "${it}dk" } ?: "WPM") } } }
+            Row(verticalAlignment = Alignment.CenterVertically) { Text("Türkçe sesle takip", Modifier.weight(1f)); Switch(settings.voiceFollow, { onSettingsChange(settings.copy(voiceFollow = it)) }) }
             Text("Geri sayım")
             SingleChoiceSegmentedButtonRow { listOf(0, 3, 5, 10).forEachIndexed { i, n -> SegmentedButton(selected = settings.countdown == n, onClick = { onSettingsChange(settings.copy(countdown = n)) }, shape = SegmentedButtonDefaults.itemShape(i, 4)) { Text(if (n == 0) "Yok" else "${n}sn") } } }
             HorizontalDivider()

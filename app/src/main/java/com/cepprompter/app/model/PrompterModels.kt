@@ -26,7 +26,11 @@ data class PrompterSettings(
     val textColor: Long = 0xFFFFFFFF,
     val readingPosition: String = "CENTER",
     val videoQuality: String = "FHD",
+    val voiceFollow: Boolean = false,
+    val wordsPerMinute: Int = 130,
+    val fontFamily: String = "SANS",
+    val frameRate: Int = 30,
     val resumeProgress: Float = 0f
 )
 
-enum class AppPage { LIBRARY, EDITOR, PROMPTER, CAMERA, SETTINGS }
+enum class AppPage { LIBRARY, EDITOR, PROMPTER, CAMERA, TOOLS, VIDEO_EDITOR, SETTINGS }

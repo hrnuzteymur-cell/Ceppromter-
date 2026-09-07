@@ -12,8 +12,8 @@ android {
         applicationId = "com.cepprompter.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 3
-        versionName = "1.0.0-beta02"
+        versionCode = 4
+        versionName = "1.0.0-rc01"
     }
 
     buildFeatures { compose = true }
@@ -38,6 +38,8 @@ dependencies {
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
+    implementation("androidx.lifecycle:lifecycle-service:2.8.7")
+    implementation("androidx.core:core-ktx:1.15.0")
     implementation("androidx.camera:camera-core:1.4.1")
     implementation("androidx.camera:camera-camera2:1.4.1")
     implementation("androidx.camera:camera-lifecycle:1.4.1")
@@ -45,5 +47,9 @@ dependencies {
     implementation("androidx.camera:camera-view:1.4.1")
     implementation("androidx.documentfile:documentfile:1.0.1")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
+    implementation("com.google.android.gms:play-services-wearable:19.0.0")
+    implementation("androidx.media3:media3-common:1.5.1")
+    implementation("androidx.media3:media3-effect:1.5.1")
+    implementation("androidx.media3:media3-transformer:1.5.1")
     debugImplementation("androidx.compose.ui:ui-tooling")
 }
